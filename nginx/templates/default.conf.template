@@ -1,0 +1,53 @@
+# デフォルトのサーバブロック(192.168.50.109ではアクセスできるが、localhostや127.0.0.1ではアクセスできないようにする)
+#server {
+#    listen 80 default_server;
+#    server_name _;  # 未定義のドメイン名にマッチする
+#    return 444;    # 444はNginxの特別なステータスコードで、接続を閉じることを意味します。
+#}
+
+#server {
+#    listen       80;
+#    server_name  192.168.50.109;
+#    return       301 https://$host$request_uri;
+#}
+
+server {
+    listen ${NGINX_PORT};
+    server_name 192.168.50.109;
+
+    location / {
+        proxy_pass http://web:${WEB_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        #proxy_pass http://host.docker.internal:3001;
+        
+    }
+
+    location /_next/webpack-hmr {
+        proxy_pass http://web:${WEB_PORT}/_next/webpack-hmr;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    location /api/ {
+        proxy_pass http://backend:${API_PORT};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        #proxy_pass http://host.docker.internal:8001;
+    }
+
+    # Django静的ファイルとメディアファイルの設定
+    location /static {
+        alias /var/www/myproject/static;
+        #alias /usr/src/app/public/static;
+    }
+
+    location /media/ {
+        alias /var/www/myproject/media;
+    }
+}
